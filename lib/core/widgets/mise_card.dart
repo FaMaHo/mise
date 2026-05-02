@@ -6,12 +6,7 @@ class MiseCard extends StatelessWidget {
   final EdgeInsets? padding;
   final VoidCallback? onTap;
 
-  const MiseCard({
-    super.key,
-    required this.child,
-    this.padding,
-    this.onTap,
-  });
+  const MiseCard({super.key, required this.child, this.padding, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +15,11 @@ class MiseCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border, width: 0.5),
         ),
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding:
+            padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: child,
       ),
     );

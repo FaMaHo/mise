@@ -17,7 +17,8 @@ class MiseAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size, height: size,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: background ?? const Color(0xFFE6F1FB),
         shape: BoxShape.circle,
