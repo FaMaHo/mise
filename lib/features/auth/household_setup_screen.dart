@@ -3,6 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/mise_text_field.dart';
 import '../../core/widgets/mise_button.dart';
+import '../../core/services/household_service.dart';
 import '../../app.dart';
 
 class HouseholdSetupScreen extends StatefulWidget {
@@ -15,6 +16,9 @@ class HouseholdSetupScreen extends StatefulWidget {
 class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
   final _householdNameController = TextEditingController();
   final _inviteCodeController = TextEditingController();
+
+  final _householdService = HouseholdService();
+
   bool _loadingCreate = false;
   bool _loadingJoin = false;
   String? _errorMessage;
@@ -26,40 +30,81 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
     super.dispose();
   }
 
+  // =========================
+  // CREATE HOUSEHOLD
+  // =========================
   Future<void> _createHousehold() async {
     if (_householdNameController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Please enter a household name.');
       return;
     }
+
     setState(() {
       _loadingCreate = true;
       _errorMessage = null;
     });
 
-    // TODO: replace with HouseholdBloc call in phase 3
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final inviteCode = await _householdService.createHousehold(
+        _householdNameController.text.trim(),
+      );
 
-    if (!mounted) return;
-    setState(() => _loadingCreate = false);
-    _goToMain();
+      if (!mounted) return;
+
+      // 🔥 SHOW INVITE CODE
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Household created 🎉'),
+          content: Text('Invite others with this code:\n\n$inviteCode'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _goToMain();
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _loadingCreate = false);
+      }
+    }
   }
 
+  // =========================
+  // JOIN HOUSEHOLD
+  // =========================
   Future<void> _joinHousehold() async {
-    if (_inviteCodeController.text.trim().isEmpty) {
+    final code = _inviteCodeController.text.trim().toUpperCase();
+
+    if (code.isEmpty) {
       setState(() => _errorMessage = 'Please enter an invite code.');
       return;
     }
+
     setState(() {
       _loadingJoin = true;
       _errorMessage = null;
     });
 
-    // TODO: replace with HouseholdBloc call in phase 3
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await _householdService.joinHousehold(code);
 
-    if (!mounted) return;
-    setState(() => _loadingJoin = false);
-    _goToMain();
+      if (!mounted) return;
+      _goToMain();
+    } catch (e) {
+      setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _loadingJoin = false);
+      }
+    }
   }
 
   void _goToMain() {
@@ -80,6 +125,8 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
+
+              // Logo
               Container(
                 width: 48,
                 height: 48,
@@ -98,16 +145,19 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 24),
+
               Text('Your\nhousehold', style: AppTextStyles.greeting),
               const SizedBox(height: 4),
               Text(
                 'Create one or join with a code',
                 style: AppTextStyles.bodySecondary,
               ),
+
               const SizedBox(height: 32),
 
-              // Create section
+              // CREATE SECTION
               _SectionCard(
                 icon: Icons.home_rounded,
                 iconBg: AppColors.primaryLight,
@@ -133,6 +183,7 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
 
               const SizedBox(height: 16),
 
+              // Divider
               Row(
                 children: [
                   const Expanded(
@@ -153,6 +204,7 @@ class _HouseholdSetupScreenState extends State<HouseholdSetupScreen> {
 
               const SizedBox(height: 16),
 
+              // JOIN SECTION
               MiseTextField(
                 label: 'Invite code',
                 placeholder: 'ABC-123',
