@@ -7,6 +7,12 @@ import 'features/cook/cook_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/auth/auth_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'core/di/service_locator.dart';
+import 'features/pantry/bloc/pantry_bloc.dart';
+import 'features/pantry/bloc/pantry_event.dart';
 
 class MiseApp extends StatelessWidget {
   const MiseApp({super.key});
@@ -50,21 +56,54 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  String? _householdId;
 
-  final _screens = const [
-    HomeScreen(),
-    ScanScreen(),
-    CookScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHouseholdId();
+  }
+
+  Future<void> _loadHouseholdId() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    if (mounted) {
+      setState(() => _householdId = doc.data()?['householdId']);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: _MiseNavBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+    if (_householdId == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    return BlocProvider(
+      create: (_) => PantryBloc(sl.pantryRepository)
+        ..add(PantryStarted(_householdId!)),
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: const [
+            HomeScreen(),
+            ScanScreen(),
+            CookScreen(),
+            ProfileScreen(),
+          ],
+        ),
+        bottomNavigationBar: _MiseNavBar(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
+        ),
       ),
     );
   }
