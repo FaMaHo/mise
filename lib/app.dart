@@ -6,6 +6,7 @@ import 'features/scan/scan_screen.dart';
 import 'features/cook/cook_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/auth/auth_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MiseApp extends StatelessWidget {
   const MiseApp({super.key});
@@ -15,8 +16,27 @@ class MiseApp extends StatelessWidget {
     return MaterialApp(
       title: 'Mise',
       theme: AppTheme.light,
-      home: const AuthScreen(),
       debugShowCheckedModeBanner: false,
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: AppColors.background,
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          }
+          if (snapshot.hasData) {
+            return const MainShell();
+          }
+          return const AuthScreen();
+        },
+      ),
     );
   }
 }

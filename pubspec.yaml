@@ -45,3 +45,6 @@ dev_dependencies:
     sdk: flutter
   drift_dev: ^2.18.0
   build_runner: ^2.4.0
+
+flutter:
+  uses-material-design: true
