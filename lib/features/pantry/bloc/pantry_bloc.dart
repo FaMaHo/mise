@@ -10,6 +10,9 @@ class PantryBloc extends Bloc<PantryEvent, PantryState> {
   StreamSubscription<List<PantryItem>>? _itemsSubscription;
   StreamSubscription<List<PantryItem>>? _expiringSubscription;
   StreamSubscription<void>? _firestoreSubscription;
+  // Add at the top with other subscriptions:
+  StreamSubscription<List<ShoppingListItem>>? _shoppingSubscription;
+  List<ShoppingListItem> _currentShopping = [];
 
   List<PantryItem> _currentItems = [];
   List<PantryItem> _currentExpiring = [];
@@ -45,6 +48,12 @@ class PantryBloc extends Bloc<PantryEvent, PantryState> {
         .watchExpiringItems(event.householdId)
         .listen((items) {
       _currentExpiring = items;
+      add(PantryItemsUpdated(_currentItems));
+    });
+    _shoppingSubscription = _repository
+      .watchShoppingItems(event.householdId)
+      .listen((items) {
+      _currentShopping = items;
       add(PantryItemsUpdated(_currentItems));
     });
   }
@@ -85,6 +94,7 @@ class PantryBloc extends Bloc<PantryEvent, PantryState> {
     emit(PantryLoaded(
       items: _currentItems,
       expiringItems: _currentExpiring,
+      shoppingItems: _currentShopping,
     ));
   }
 
@@ -93,6 +103,7 @@ class PantryBloc extends Bloc<PantryEvent, PantryState> {
     _itemsSubscription?.cancel();
     _expiringSubscription?.cancel();
     _firestoreSubscription?.cancel();
+    _shoppingSubscription?.cancel();
     return super.close();
   }
 }

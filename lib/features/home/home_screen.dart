@@ -7,6 +7,8 @@ import '../../core/widgets/mise_avatar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../pantry/bloc/pantry_bloc.dart';
 import '../pantry/bloc/pantry_state.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class HomeScreen extends StatelessWidget {
@@ -37,11 +39,55 @@ class HomeScreen extends StatelessWidget {
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
-class _Header extends StatelessWidget {
+// ── Header ───────────────────────────────────────────────────────────────────
+
+class _Header extends StatefulWidget {
   const _Header();
 
   @override
+  State<_Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<_Header> {
+  String? _householdName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHouseholdName();
+  }
+
+  Future<void> _loadHouseholdName() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final householdId = userDoc.data()?['householdId'] as String?;
+    if (householdId == null) return;
+
+    final householdDoc = await FirebaseFirestore.instance
+        .collection('households')
+        .doc(householdId)
+        .get();
+
+    if (mounted) {
+      setState(() {
+        _householdName = householdDoc.data()?['name'] as String?;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ??
+        user?.email?.split('@').first ??
+        'there';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -49,40 +95,32 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting(), style: AppTextStyles.greeting),
+              Text(
+                '${_greeting()},\n$displayName!',
+                style: AppTextStyles.greeting,
+              ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Text('Flat 4B', style: AppTextStyles.caption),
+                  Text(
+                    _householdName ?? '—',
+                    style: AppTextStyles.caption,
+                  ),
                   const SizedBox(width: 6),
                   Container(
                     width: 3,
                     height: 3,
                     decoration: const BoxDecoration(
-                      color: AppColors.borderStrong,
+                      color: AppColors.textSecondary,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text('3 members', style: AppTextStyles.caption),
+                  Text(_greeting(), style: AppTextStyles.caption),
                 ],
               ),
             ],
           ),
-        ),
-        const SizedBox(width: 12),
-        Row(
-          children: [
-            _IconButton(
-              icon: Icons.notifications_outlined,
-              onTap: () {},
-            ),
-            const SizedBox(width: 8),
-            _IconButton(
-              icon: Icons.add,
-              onTap: () {},
-            ),
-          ],
         ),
       ],
     );
@@ -260,66 +298,71 @@ class _ShoppingListItem {
 class _ShoppingListSection extends StatelessWidget {
   const _ShoppingListSection();
 
-  static const _items = [
-    _ShoppingListItem('Eggs',      '×2'),
-    _ShoppingListItem('Butter',    '×1'),
-    _ShoppingListItem('Olive oil', '×1'),
-    _ShoppingListItem('Pasta',     '×1', checked: true),
-  ];
-
-  static int get _uncheckedCount => _items.where((i) => !i.checked).length;
-
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return BlocBuilder<PantryBloc, PantryState>(
+      builder: (context, state) {
+        if (state is! PantryLoaded || state.shoppingItems.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final items = state.shoppingItems;
+        final unchecked = items.where((i) => !i.isChecked).length;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SectionLabel('Shopping list'),
-            MisePill(
-              label: '$_uncheckedCount left',
-              variant: PillVariant.success,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const _SectionLabel('Shopping list'),
+                MisePill(
+                  label: '$unchecked left',
+                  variant: PillVariant.success,
+                ),
+              ],
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        MiseCard(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Column(
-            children: List.generate(_items.length * 2 - 1, (i) {
-              if (i.isOdd) return const _RowDivider();
-              final item = _items[i ~/ 2];
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    _Checkbox(checked: item.checked),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: item.checked
-                            ? AppTextStyles.body.copyWith(
-                                color: AppColors.textDisabled,
-                                decoration: TextDecoration.lineThrough,
-                                decorationColor: AppColors.textDisabled,
-                              )
-                            : AppTextStyles.body,
-                      ),
+            const SizedBox(height: 8),
+            MiseCard(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                children: List.generate(items.length * 2 - 1, (i) {
+                  if (i.isOdd) return const _RowDivider();
+                  final item = items[i ~/ 2];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
                     ),
-                    Text(item.quantity, style: AppTextStyles.caption),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
+                    child: Row(
+                      children: [
+                        _Checkbox(checked: item.isChecked),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: item.isChecked
+                                ? AppTextStyles.body.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: AppColors.textSecondary,
+                                  )
+                                : AppTextStyles.body,
+                          ),
+                        ),
+                        Text(
+                          '×${item.quantity}',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 28),
+          ],
+        );
+      },
     );
   }
 }
@@ -453,7 +496,7 @@ class _LiveDotState extends State<_LiveDot>
 
 String _greeting() {
   final hour = DateTime.now().hour;
-  if (hour < 12) return 'Good morning,\nFatemeh!';
-  if (hour < 17) return 'Good afternoon,\nFatemeh!';
-  return 'Good evening,\nFatemeh!';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }

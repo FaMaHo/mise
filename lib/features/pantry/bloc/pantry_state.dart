@@ -14,11 +14,14 @@ class PantryLoading extends PantryState {}
 class PantryLoaded extends PantryState {
   final List<PantryItem> items;
   final List<PantryItem> expiringItems;
+  final List<ShoppingListItem> shoppingItems;
 
   const PantryLoaded({
     required this.items,
     required this.expiringItems,
+    required this.shoppingItems,
   });
+
 
   List<PantryItem> get allItems => items;
 
@@ -26,7 +29,7 @@ class PantryLoaded extends PantryState {
   List<PantryItem> get soonExpiring => expiringItems;
 
   @override
-  List<Object?> get props => [items, expiringItems];
+  List<Object?> get props => [items, expiringItems, shoppingItems];
 }
 
 class PantryError extends PantryState {

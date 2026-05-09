@@ -199,4 +199,16 @@ class PantryRepository {
       }
     });
   }
+  Stream<List<ShoppingListItem>> watchShoppingItems(String householdId) {
+  return (_db.select(_db.shoppingListItems)
+        ..where((t) => t.householdId.equals(householdId))
+        ..orderBy([(t) => drift.OrderingTerm.asc(t.addedAt)]))
+      .watch();
+}
+
+Future<void> toggleShoppingItem(String itemId, bool isChecked) async {
+  await (_db.update(_db.shoppingListItems)
+        ..where((t) => t.id.equals(itemId)))
+      .write(ShoppingListItemsCompanion(isChecked: drift.Value(isChecked)));
+}
 }
