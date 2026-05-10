@@ -8,11 +8,11 @@ import 'features/profile/profile_screen.dart';
 import 'features/auth/auth_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/di/service_locator.dart';
 import 'features/pantry/bloc/pantry_bloc.dart';
 import 'features/pantry/bloc/pantry_event.dart';
+import 'core/di/household_id_provider.dart';
 
 class MiseApp extends StatelessWidget {
   const MiseApp({super.key});
@@ -87,10 +87,12 @@ class _MainShellState extends State<MainShell> {
       );
     }
 
-    return BlocProvider(
-      create: (_) => PantryBloc(sl.pantryRepository)
-        ..add(PantryStarted(_householdId!)),
-      child: Scaffold(
+return HouseholdIdProvider(
+  householdId: _householdId!,
+  child: BlocProvider(
+    create: (_) => PantryBloc(sl.pantryRepository)
+      ..add(PantryStarted(_householdId!)),
+    child: Scaffold(
         body: IndexedStack(
           index: _currentIndex,
           children: const [
@@ -105,6 +107,7 @@ class _MainShellState extends State<MainShell> {
           onTap: (i) => setState(() => _currentIndex = i),
         ),
       ),
+    ),
     );
   }
 }
