@@ -27,6 +27,7 @@ class AppColors {
 
   // Semantic — danger (soft red-brown)
   static const dangerBg = Color(0xFFEDD4C8);
+  static const dangerBackground = dangerBg;
   static const dangerText = Color(0xFF7A2A1A);
 
   // Semantic — info (tan)

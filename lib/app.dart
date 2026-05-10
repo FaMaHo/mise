@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/home_screen.dart';
-import 'features/scan/scan_screen.dart';
+import 'features/shopping/shopping_screen.dart';
+import 'features/pantry/pantry_screen.dart';
 import 'features/cook/cook_screen.dart';
-import 'features/profile/profile_screen.dart';
 import 'features/auth/auth_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +12,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/di/service_locator.dart';
 import 'features/pantry/bloc/pantry_bloc.dart';
 import 'features/pantry/bloc/pantry_event.dart';
+import 'features/shopping/bloc/shopping_bloc.dart';
+import 'features/shopping/bloc/shopping_event.dart';
 import 'core/di/household_id_provider.dart';
 
 class MiseApp extends StatelessWidget {
@@ -31,15 +33,11 @@ class MiseApp extends StatelessWidget {
               backgroundColor: AppColors.background,
               body: Center(
                 child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 2,
-                ),
+                    color: AppColors.primary, strokeWidth: 2),
               ),
             );
           }
-          if (snapshot.hasData) {
-            return const MainShell();
-          }
+          if (snapshot.hasData) return const MainShell();
           return const AuthScreen();
         },
       ),
@@ -82,32 +80,39 @@ class _MainShellState extends State<MainShell> {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+            child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
-return HouseholdIdProvider(
-  householdId: _householdId!,
-  child: BlocProvider(
-    create: (_) => PantryBloc(sl.pantryRepository)
-      ..add(PantryStarted(_householdId!)),
-    child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: const [
-            HomeScreen(),
-            ScanScreen(),
-            CookScreen(),
-            ProfileScreen(),
-          ],
-        ),
-        bottomNavigationBar: _MiseNavBar(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+    return HouseholdIdProvider(
+      householdId: _householdId!,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) => PantryBloc(sl.pantryRepository)
+              ..add(PantryStarted(_householdId!)),
+          ),
+          BlocProvider(
+            create: (_) => ShoppingBloc(sl.shoppingRepository, sl.pantryRepository)
+              ..add(ShoppingStarted(_householdId!)),
+          ),
+        ],
+        child: Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: const [
+              HomeScreen(),
+              ShoppingScreen(),
+              PantryScreen(),
+              CookScreen(),
+            ],
+          ),
+          bottomNavigationBar: _MiseNavBar(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -119,26 +124,10 @@ class _MiseNavBar extends StatelessWidget {
   const _MiseNavBar({required this.currentIndex, required this.onTap});
 
   static const _items = [
-    (
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Home',
-    ),
-    (
-      icon: Icons.grid_view_outlined,
-      activeIcon: Icons.grid_view_rounded,
-      label: 'Pantry',
-    ),
-    (
-      icon: Icons.restaurant_outlined,
-      activeIcon: Icons.restaurant_rounded,
-      label: 'Cook',
-    ),
-    (
-      icon: Icons.people_outline,
-      activeIcon: Icons.people_rounded,
-      label: 'Household',
-    ),
+    (icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
+    (icon: Icons.shopping_cart_outlined, activeIcon: Icons.shopping_cart_rounded, label: 'Shopping'),
+    (icon: Icons.kitchen_outlined, activeIcon: Icons.kitchen_rounded, label: 'Pantry'),
+    (icon: Icons.restaurant_outlined, activeIcon: Icons.restaurant_rounded, label: 'Cook'),
   ];
 
   @override
@@ -146,16 +135,9 @@ class _MiseNavBar extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.border, width: 0.5),
-        ),
+        border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
-      padding: const EdgeInsets.only(
-        top: 10,
-        bottom: 24,
-        left: 12,
-        right: 12,
-      ),
+      padding: const EdgeInsets.only(top: 10, bottom: 24, left: 12, right: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(_items.length, (i) {
@@ -167,9 +149,7 @@ class _MiseNavBar extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: EdgeInsets.symmetric(
-                horizontal: active ? 16 : 10,
-                vertical: 8,
-              ),
+                  horizontal: active ? 16 : 10, vertical: 8),
               decoration: BoxDecoration(
                 color: active ? AppColors.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
