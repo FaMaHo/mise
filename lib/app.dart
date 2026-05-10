@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'core/di/service_locator.dart';
+import 'core/di/household_id_provider.dart';
+
+import 'features/auth/auth_screen.dart';
+import 'features/auth/household_setup_screen.dart';
+
 import 'features/home/home_screen.dart';
 import 'features/shopping/shopping_screen.dart';
 import 'features/pantry/pantry_screen.dart';
 import 'features/cook/cook_screen.dart';
-import 'features/auth/auth_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'core/di/service_locator.dart';
+import 'features/profile/profile_screen.dart';
+
 import 'features/pantry/bloc/pantry_bloc.dart';
 import 'features/pantry/bloc/pantry_event.dart';
+
 import 'features/shopping/bloc/shopping_bloc.dart';
 import 'features/shopping/bloc/shopping_event.dart';
-import 'core/di/household_id_provider.dart';
 
 class MiseApp extends StatelessWidget {
   const MiseApp({super.key});
@@ -25,22 +32,7 @@ class MiseApp extends StatelessWidget {
       title: 'Mise',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              backgroundColor: AppColors.background,
-              body: Center(
-                child: CircularProgressIndicator(
-                    color: AppColors.primary, strokeWidth: 2),
-              ),
-            );
-          }
-          if (snapshot.hasData) return const MainShell();
-          return const AuthScreen();
-        },
-      ),
+      home: const AuthScreen(),
     );
   }
 }
@@ -63,14 +55,35 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _loadHouseholdId() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final doc = await FirebaseFirestore.instance
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
         .collection('users')
-        .doc(uid)
+        .doc(user.uid)
         .get();
+
+    final data = userDoc.data();
+
+    if (data == null) return;
+
+    final householdId = data['householdId'];
+
+    if (householdId == null) {
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HouseholdSetupScreen()),
+      );
+
+      return;
+    }
+
     if (mounted) {
-      setState(() => _householdId = doc.data()?['householdId']);
+      setState(() {
+        _householdId = householdId;
+      });
     }
   }
 
@@ -80,7 +93,8 @@ class _MainShellState extends State<MainShell> {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
-            child: CircularProgressIndicator(color: AppColors.primary)),
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       );
     }
 
@@ -89,27 +103,34 @@ class _MainShellState extends State<MainShell> {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (_) => PantryBloc(sl.pantryRepository)
-              ..add(PantryStarted(_householdId!)),
+            create: (_) =>
+                PantryBloc(sl.pantryRepository)
+                  ..add(PantryStarted(_householdId!)),
           ),
           BlocProvider(
-            create: (_) => ShoppingBloc(sl.shoppingRepository, sl.pantryRepository)
-              ..add(ShoppingStarted(_householdId!)),
+            create: (_) =>
+                ShoppingBloc(sl.shoppingRepository, sl.pantryRepository)
+                  ..add(ShoppingStarted(_householdId!)),
           ),
         ],
         child: Scaffold(
           body: IndexedStack(
             index: _currentIndex,
-            children: const [
-              HomeScreen(),
-              ShoppingScreen(),
-              PantryScreen(),
-              CookScreen(),
+            children: [
+              const HomeScreen(),
+              const ShoppingScreen(),
+              const PantryScreen(),
+              const CookScreen(),
+              const ProfileScreen(),
             ],
           ),
           bottomNavigationBar: _MiseNavBar(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) {
+              setState(() {
+                _currentIndex = i;
+              });
+            },
           ),
         ),
       ),
@@ -125,9 +146,22 @@ class _MiseNavBar extends StatelessWidget {
 
   static const _items = [
     (icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
-    (icon: Icons.shopping_cart_outlined, activeIcon: Icons.shopping_cart_rounded, label: 'Shopping'),
-    (icon: Icons.kitchen_outlined, activeIcon: Icons.kitchen_rounded, label: 'Pantry'),
-    (icon: Icons.restaurant_outlined, activeIcon: Icons.restaurant_rounded, label: 'Cook'),
+    (
+      icon: Icons.shopping_cart_outlined,
+      activeIcon: Icons.shopping_cart_rounded,
+      label: 'Shopping',
+    ),
+    (
+      icon: Icons.kitchen_outlined,
+      activeIcon: Icons.kitchen_rounded,
+      label: 'Pantry',
+    ),
+    (
+      icon: Icons.restaurant_outlined,
+      activeIcon: Icons.restaurant_rounded,
+      label: 'Cook',
+    ),
+    (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
   ];
 
   @override
@@ -143,13 +177,16 @@ class _MiseNavBar extends StatelessWidget {
         children: List.generate(_items.length, (i) {
           final item = _items[i];
           final active = i == currentIndex;
+
           return GestureDetector(
             onTap: () => onTap(i),
             behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: EdgeInsets.symmetric(
-                  horizontal: active ? 16 : 10, vertical: 8),
+                horizontal: active ? 16 : 10,
+                vertical: 8,
+              ),
               decoration: BoxDecoration(
                 color: active ? AppColors.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
