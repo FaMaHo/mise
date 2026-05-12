@@ -20,21 +20,25 @@ A Flutter app for housemates who want to stop wondering what to cook. Scan items
 
 | Screen | Description |
 |---|---|
-| Login / Join | Sign in or join a household with an invite code |
-| Home | Expiring items, shopping list, live "shopping now" indicator |
-| Scan / Add | Barcode scanner with manual search fallback |
-| Cook suggestions | Full match recipes, then partial matches with missing ingredient nudge |
-| Profile | Household members, invite others, notification settings |
+| Login / Household Setup | Sign in, create or join household via invite code |
+| Home | Greeting, pantry overview, expiring items, shopping preview, quick actions |
+| Pantry / Full item list, expiry pills, swipe to delete, scan or manual add |
+| Shopping List | shared list, check off moves item to pantry, scan to add |
+| Cook suggestions | Recipe cards ranked by pantry match, detail sheet with instructions |
+| Profile | User's name and email, Household info, invite others|
 
 ---
 
 ## Tech stack
 
-- **Flutter** — cross-platform mobile app
-- **BLoC** — state management
-- **Drift** — local SQLite database, offline-first
-- **Firebase** — authentication, real-time sync via Firestore, household invites
-- **Spoonacular API** (in research mode - might change) — recipe data and ingredient matching
+- **Flutter** — cross-platform mobile
+- **BLoC** — state management (PantryBloc, ShoppingBloc, CookBloc)
+- **Drift (local SQLite)** — offline-first data layer
+- **Firebase Auth** — email/password authentication
+- **Cloud Firestore** — real-time sync across devices
+- **Spoonacular API** — recipe suggestions by ingredient
+- **OpenFoodFacts API** — barcode product lookup
+
 
 ---
 
@@ -48,9 +52,3 @@ flutter run
 ```
 
 > Requires Flutter 3.x, a Firebase project with Auth and Firestore enabled, and a Spoonacular API key. Add your keys to a `.env` file (see `.env.example`).
-
----
-
-## Other information
-
-Built as a lab project for the Mobile and Embedded Computing course. The app is designed around an offline-first architecture — all data lives locally in Drift and syncs to Firebase when a connection is available. Real-time household updates use Firestore's WebSocket-based listeners.
