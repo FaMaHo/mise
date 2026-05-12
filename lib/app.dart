@@ -23,6 +23,9 @@ import 'features/pantry/bloc/pantry_event.dart';
 import 'features/shopping/bloc/shopping_bloc.dart';
 import 'features/shopping/bloc/shopping_event.dart';
 
+import 'features/cook/bloc/cook_bloc.dart';
+import 'data/services/recipe_api_service.dart';
+
 class MiseApp extends StatelessWidget {
   const MiseApp({super.key});
 
@@ -112,6 +115,9 @@ class _MainShellState extends State<MainShell> {
                 ShoppingBloc(sl.shoppingRepository, sl.pantryRepository)
                   ..add(ShoppingStarted(_householdId!)),
           ),
+          BlocProvider(
+            create: (_) => CookBloc(RecipeApiService('d3e1de5696b44bc793f5f1f0a5a46409')),
+),
         ],
         child: Scaffold(
           body: IndexedStack(
